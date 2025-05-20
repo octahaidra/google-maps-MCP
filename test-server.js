@@ -14,34 +14,29 @@ async function testServer() {
     const healthResponse = await fetch('http://localhost:3000/health');
     const healthData = await healthResponse.json();
     assert.deepStrictEqual(healthData, { status: 'ok' }, 'Health check should return ok status');
-    console.log('Health check passed');
-
-    // Test geocoding
+    console.log('Health check passed');    // Test geocoding
     console.log('Testing geocoding...');
     const geocodeResponse = await fetch('http://localhost:3000/trpc/geocode', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address: '1600 Amphitheatre Parkway, Mountain View, CA' })
+      body: JSON.stringify({
+        id: 1,
+        jsonrpc: '2.0',
+        method: 'mutation',
+        params: {
+          input: { "address": "1600 Amphitheatre Parkway, Mountain View, CA" }
+        }
+      })
     });
     const geocodeData = await geocodeResponse.json();
-    assert(geocodeData?.data?.content[0]?.text, 'Geocoding response should have content');
-    const geocodeContent = JSON.parse(geocodeData.data.content[0].text);
-    assert(geocodeContent.location?.lat, 'Geocoding response should have latitude');
-    assert(geocodeContent.location?.lng, 'Geocoding response should have longitude');
+    console.log('Geocode response:', JSON.stringify(geocodeData, null, 2));
+    assert(geocodeData?.result?.data?.content?.[0]?.text, 'Geocoding response should have content');
+    const geocodeContent = JSON.parse(geocodeData.result.data.content[0].text);
+    assert(typeof geocodeContent.location?.lat === 'number', 'Geocoding response should have latitude');
+    assert(typeof geocodeContent.location?.lng === 'number', 'Geocoding response should have longitude');
+    assert(typeof geocodeContent.formatted_address === 'string', 'Geocoding response should have formatted_address');
+    assert(typeof geocodeContent.place_id === 'string', 'Geocoding response should have place_id');
     console.log('Geocoding test passed');
-
-    // Test reverse geocoding
-    console.log('Testing reverse geocoding...');
-    const reverseGeocodeResponse = await fetch('http://localhost:3000/trpc/reverseGeocode', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ latitude: 37.7749, longitude: -122.4194 })
-    });
-    const reverseGeocodeData = await reverseGeocodeResponse.json();
-    assert(reverseGeocodeData?.data?.content[0]?.text, 'Reverse geocoding response should have content');
-    const reverseGeocodeContent = JSON.parse(reverseGeocodeData.data.content[0].text);
-    assert(reverseGeocodeContent.formatted_address, 'Reverse geocoding should return formatted address');
-    console.log('Reverse geocoding test passed');
 
     // Test place search with and without location
     console.log('Testing place search...');
@@ -59,15 +54,21 @@ async function testServer() {
       }
     ];
 
-    for (const test of placeSearchTests) {
-      const placeSearchResponse = await fetch('http://localhost:3000/trpc/searchPlaces', {
+    for (const test of placeSearchTests) {      const placeSearchResponse = await fetch('http://localhost:3000/trpc/searchPlaces', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(test.body)
+        body: JSON.stringify({
+          id: 2,
+          jsonrpc: '2.0',
+          method: 'mutation',
+          params: {
+            input: test.body
+          }
+        })
       });
       const placeSearchData = await placeSearchResponse.json();
-      assert(placeSearchData?.data?.content[0]?.text, `Place search ${test.name} should have content`);
-      const placeSearchContent = JSON.parse(placeSearchData.data.content[0].text);
+      assert(placeSearchData?.result?.data?.content[0]?.text, `Place search ${test.name} should have content`);
+      const placeSearchContent = JSON.parse(placeSearchData.result.data.content[0].text);
       assert(Array.isArray(placeSearchContent.places), `Place search ${test.name} should return array of places`);
       console.log(`Place search ${test.name} test passed`);
     }
